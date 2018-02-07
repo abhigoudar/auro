@@ -1,0 +1,42 @@
+<launch>
+	<param name="/use_sim_time" value="true"/>
+	
+	<arg name="do_calibration" default="false"/>
+	<arg name="calib_file" value="$(find auro)/data/usb_cam.yaml"/>
+
+	<node name="rosbag" type="play" pkg="rosbag" args="-r 1 --clock $(find auro)/data/2016-11-22-14-32-13_test.bag"/>
+
+	<group if="$(arg do_calibration)">
+   		<node name="camera_calibration" pkg="camera_calibration" type="cameracalibrator.py" args="--size 5x7 --square 0.05 image:=/sensors/camera/image_color 
+   		camera:=/sensors/camera  --no-service-check"/>
+   	</group>
+
+   	<group unless="$(arg do_calibration)">
+
+   		<node pkg="tf" type="static_transform_publisher" name="velodyne_to_camera" args="0.0961287384953718 -0.4785167123912206 -0.1231251388350354  2.45809 -1.26697 -0.876458 /camera_optical /velodyne 100"/>
+
+   		<remap from="/image_color" to="/sensors/camera/image_color"/>
+   		<remap from="/camera_info" to="/usb_cam/camera_info"/>
+   		<node name="cam_info_pub" type="cam_pub.py" pkg="auro">
+   			<param name="calib_file" value="$(arg calib_file)"/>
+   		</node>
+
+   		
+		<remap from="velodyne_points" to="/sensors/velodyne_points"/>
+		<remap from="image_rect" to="/usb_cam/image_rect"/>
+		<node name="sav_img_pcd_node" type="sav_img_pcd_node" pkg="auro"/>
+  		
+  		<remap from="/usb_cam/image_raw" to="/sensors/camera/image_color"/>
+		<group ns="usb_cam">
+			<node name="image_proc" type="image_proc" pkg="image_proc"/>
+		</group>
+
+  		<remap from="/color_image" to="/sensors/camera/image_color"/>
+  		<remap from="/camera_info" to="/usb_cam/camera_info"/>
+  		<remap from="/velodyne_points" to="/sensors/velodyne_points"/>
+		<node name="pc_to_rgbpc_node" type="pc_to_rgbpc_node" pkg="auro"/>
+   	</group>
+
+  
+
+</launch>
